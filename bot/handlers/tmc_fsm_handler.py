@@ -1,42 +1,41 @@
 # bot/handlers/tmc_fsm_handler.py
 
-from aiogram import types, Dispatcher
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from bot.services import tmc_service
+from aiogram import Router, F
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+
+router = Router()
 
 class TMCStates(StatesGroup):
-    waiting_number = State()
-    waiting_date = State()
-    waiting_description = State()
+    waiting_for_name = State()
+    waiting_for_serial = State()
+    waiting_for_amount = State()
 
-async def start_tmc(message: types.Message):
-    await message.answer("Введите номер ТМЦ:")
-    await TMCStates.waiting_number.set()
+async def start_tmc(message: Message, state: FSMContext):
+    await message.answer("Введите наименование ТМЦ:")
+    await state.set_state(TMCStates.waiting_for_name)
 
-async def tmc_number(message: types.Message, state: FSMContext):
-    await state.update_data(number=message.text)
-    await message.answer("Введите дату выдачи ТМЦ (ДД.ММ.ГГГГ):")
-    await TMCStates.waiting_date.set()
+async def get_name(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await message.answer("Введите серийный номер:")
+    await state.set_state(TMCStates.waiting_for_serial)
 
-async def tmc_date(message: types.Message, state: FSMContext):
-    await state.update_data(date=message.text)
-    await message.answer("Введите описание ТМЦ:")
-    await TMCStates.waiting_description.set()
+async def get_serial(message: Message, state: FSMContext):
+    await state.update_data(serial=message.text)
+    await message.answer("Введите сумму:")
+    await state.set_state(TMCStates.waiting_for_amount)
 
-async def tmc_description(message: types.Message, state: FSMContext):
+async def get_amount(message: Message, state: FSMContext):
+    await state.update_data(amount=message.text)
     data = await state.get_data()
-    tmc_record = {
-        "Номер выдачи 1С": data["number"],
-        "Дата": data["date"],
-        "Описание": message.text
-    }
-    tmc_service.add_tmc(tmc_record)
-    await message.answer("✅ ТМЦ добавлен.")
-    await state.finish()
+    await message.answer(
+        f"ТМЦ сохранено:\nНаименование: {data['name']}\nСерийный номер: {data['serial']}\nСумма: {data['amount']}"
+    )
+    await state.clear()
 
-def register_tmc_handlers(dp: Dispatcher):
-    dp.register_message_handler(start_tmc, lambda m: m.text == "ТМЦ 50/50")
-    dp.register_message_handler(tmc_number, state=TMCStates.waiting_number)
-    dp.register_message_handler(tmc_date, state=TMCStates.waiting_date)
-    dp.register_message_handler(tmc_description, state=TMCStates.waiting_description)
+def register_tmc_handlers(dp):
+    dp.message.register(start_tmc, F.text == "Создать ТМЦ")
+    dp.message.register(get_name, TMCStates.waiting_for_name)
+    dp.message.register(get_serial, TMCStates.waiting_for_serial)
+    dp.message.register(get_amount, TMCStates.waiting_for_amount)

@@ -1,30 +1,43 @@
-# bot/handlers/payment_handler.py
-from aiogram import Router, F
-from aiogram.types import Message
+# bot/handlers/reports_handler.py
+
+from aiogram import Router, types
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
 
 router = Router()
 
-# FSM для проверки оплат
-class PaymentStates(StatesGroup):
-    waiting_for_registry = State()
+# Простейший словарь для хранения отчетов в памяти (можно заменить на базу)
+reports_storage = {}
 
-@router.message(F.text.lower() == "статус оплаты")
-async def start_payment_check(message: Message, state: FSMContext):
-    await message.answer("Вставьте текст реестра оплат:")
-    await state.set_state(PaymentStates.waiting_for_registry)
+@router.message(Command(commands=["report_add"]))
+async def add_report(message: types.Message, state: FSMContext):
+    """
+    Добавляет отчет в память.
+    Формат: /report_add Название_отчета | Текст отчета
+    """
+    try:
+        text = message.text.split(" ", 1)[1]
+        name, content = map(str.strip, text.split("|", 1))
+        reports_storage[name] = content
+        await message.answer(f"✅ Отчет '{name}' сохранен.")
+    except Exception:
+        await message.answer("❌ Используйте формат: /report_add Название_отчета | Текст отчета")
 
-@router.message(PaymentStates.waiting_for_registry)
-async def process_registry(message: Message, state: FSMContext):
-    registry_text = message.text
-    
-    # Здесь должна быть логика поиска совпадений с базой счетов и заявок
-    # Для примера выводим просто текст реестра
-    await message.answer(f"✅ Реестр принят, обработка...\n{text[:500]}... (сокращено)")
+@router.message(Command(commands=["report_list"]))
+async def list_reports(message: types.Message):
+    """
+    Показывает список всех отчетов
+    """
+    if not reports_storage:
+        await message.answer("📂 Нет сохраненных отчетов")
+        return
+    response = "📋 Список отчетов:\n"
+    for name, content in reports_storage.items():
+        response += f"• {name}: {content}\n"
+    await message.answer(response)
 
-    # TODO: сверка по номерам и датам, кроме счетов за связь
-    await state.clear()
-
-def register_payment_handlers(dp):
+def register_reports_handlers(dp):
+    """
+    Функция для совместимости с main.py
+    """
     dp.include_router(router)

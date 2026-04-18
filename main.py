@@ -59,13 +59,7 @@ async def main():
         await bot.session.close()
 
 if __name__ == "__main__":
-    asyncio.run(main())import asyncio
-import logging
-import os
-from aiogram import Bot, Dispatcher
-from aiogram.fsm.storage.memory import MemoryStorage
-from dotenv import load_dotenv
-
+    asyncio.run(main())
 # -----------------------------
 # Загрузка переменных окружения
 # -----------------------------

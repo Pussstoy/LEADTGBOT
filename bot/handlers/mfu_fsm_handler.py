@@ -1,42 +1,41 @@
 # bot/handlers/mfu_fsm_handler.py
 
-from aiogram import types, Dispatcher
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from bot.services import mfu_service
+from aiogram import Router, F
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+
+router = Router()
 
 class MFUStates(StatesGroup):
-    waiting_manufacturer = State()
-    waiting_model = State()
-    waiting_serial = State()
+    waiting_for_model = State()
+    waiting_for_serial = State()
+    waiting_for_status = State()
 
-async def start_mfu(message: types.Message):
-    await message.answer("Введите производителя МФУ:")
-    await MFUStates.waiting_manufacturer.set()
-
-async def mfu_manufacturer(message: types.Message, state: FSMContext):
-    await state.update_data(manufacturer=message.text)
+async def start_mfu(message: Message, state: FSMContext):
     await message.answer("Введите модель МФУ:")
-    await MFUStates.waiting_model.set()
+    await state.set_state(MFUStates.waiting_for_model)
 
-async def mfu_model(message: types.Message, state: FSMContext):
+async def get_model(message: Message, state: FSMContext):
     await state.update_data(model=message.text)
-    await message.answer("Введите серийный номер МФУ:")
-    await MFUStates.waiting_serial.set()
+    await message.answer("Введите серийный номер:")
+    await state.set_state(MFUStates.waiting_for_serial)
 
-async def mfu_serial(message: types.Message, state: FSMContext):
+async def get_serial(message: Message, state: FSMContext):
+    await state.update_data(serial=message.text)
+    await message.answer("Введите состояние МФУ:")
+    await state.set_state(MFUStates.waiting_for_status)
+
+async def get_status(message: Message, state: FSMContext):
+    await state.update_data(status=message.text)
     data = await state.get_data()
-    record = {
-        "Производитель": data["manufacturer"],
-        "Модель": data["model"],
-        "Серийный номер": message.text
-    }
-    mfu_service.add_mfu(record)
-    await message.answer("✅ МФУ добавлен.")
-    await state.finish()
+    await message.answer(
+        f"МФУ сохранено:\nМодель: {data['model']}\nСерийный номер: {data['serial']}\nСостояние: {data['status']}"
+    )
+    await state.clear()
 
-def register_mfu_handlers(dp: Dispatcher):
-    dp.register_message_handler(start_mfu, lambda m: m.text == "МФУ")
-    dp.register_message_handler(mfu_manufacturer, state=MFUStates.waiting_manufacturer)
-    dp.register_message_handler(mfu_model, state=MFUStates.waiting_model)
-    dp.register_message_handler(mfu_serial, state=MFUStates.waiting_serial)
+def register_mfu_handlers(dp):
+    dp.message.register(start_mfu, F.text == "Создать МФУ")
+    dp.message.register(get_model, MFUStates.waiting_for_model)
+    dp.message.register(get_serial, MFUStates.waiting_for_serial)
+    dp.message.register(get_status, MFUStates.waiting_for_status)

@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 # Загрузка переменных окружения
 # -----------------------------
 load_dotenv()
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_CHAT_ID = os.getenv("OWNER_CHAT_ID")
 
@@ -27,9 +26,9 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 # Инициализация бота и FSM
 # -----------------------------
-storage = MemoryStorage()
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot, storage=storage)
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)  # В aiogram 3.x бот НЕ передается в Dispatcher
 
 # -----------------------------
 # Импорт и регистрация обработчиков
@@ -41,6 +40,7 @@ from bot.handlers.mail_handler import register_mail_handlers
 from bot.handlers.payment_handler import register_payment_handlers
 from bot.handlers.reports_handler import register_reports_handlers
 
+# Регистрируем все обработчики
 register_connection_bills_handlers(dp)
 register_tmc_handlers(dp)
 register_mfu_handlers(dp)
@@ -55,7 +55,7 @@ async def main():
     while True:
         try:
             logger.info("Запуск бота...")
-            await dp.start_polling()
+            await dp.start_polling(bot)
         except Exception as e:
             logger.exception(f"Бот упал с ошибкой: {e}. Перезапуск через 5 секунд...")
             await asyncio.sleep(5)

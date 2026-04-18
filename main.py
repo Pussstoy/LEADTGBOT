@@ -1,5 +1,3 @@
-# bot/main.py
-
 import asyncio
 import logging
 import os
@@ -28,7 +26,7 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
-dp = Dispatcher(bot=bot, storage=storage)  # Обязательно передаем bot
+dp = Dispatcher(bot=bot, storage=storage)
 
 # -----------------------------
 # Импорт и регистрация обработчиков
@@ -51,13 +49,11 @@ register_reports_handlers(dp)
 # Автоперезапуск при ошибках
 # -----------------------------
 async def main():
-    while True:
-        try:
-            logger.info("Запуск бота...")
-            await dp.start_polling()
-        except Exception as e:
-            logger.exception(f"Бот упал с ошибкой: {e}. Перезапуск через 5 секунд...")
-            await asyncio.sleep(5)
+    logger.info("Запуск бота...")
+    try:
+        await dp.start_polling()
+    finally:
+        await bot.session.close()  # <-- закрываем сессию при завершении
 
 if __name__ == "__main__":
     asyncio.run(main())

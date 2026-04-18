@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
-dp = Dispatcher(bot=bot, storage=storage)
+dp = Dispatcher(storage=storage)
+dp.bot = bot  # <-- важно присвоить экземпляр бота сюда
 
 # -----------------------------
 # Импорт и регистрация обработчиков
@@ -53,7 +54,7 @@ async def main():
     try:
         await dp.start_polling()
     finally:
-        await bot.session.close()  # <-- закрываем сессию при завершении
+        await bot.session.close()
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 # Загрузка переменных окружения
 # -----------------------------
 load_dotenv()
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_CHAT_ID = os.getenv("OWNER_CHAT_ID")
 
@@ -27,9 +26,9 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 # Инициализация бота и FSM
 # -----------------------------
-storage = MemoryStorage()
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot=bot, storage=storage)  # ОБЯЗАТЕЛЬНО передаем bot
+storage = MemoryStorage()
+dp = Dispatcher(bot=bot, storage=storage)  # Обязательно передаем bot
 
 # -----------------------------
 # Импорт и регистрация обработчиков

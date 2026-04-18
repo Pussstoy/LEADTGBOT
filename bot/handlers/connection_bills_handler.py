@@ -1,36 +1,42 @@
 # bot/handlers/connection_bills_handler.py
 
-from aiogram import types, Dispatcher
-from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from bot.services import connection_bills_service
+from aiogram import Router, F
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 
-# -----------------------------
-# Кнопки меню
-# -----------------------------
-kb_main = ReplyKeyboardMarkup(resize_keyboard=True)
-kb_main.add(KeyboardButton("Счета за связь"))
-kb_main.add(KeyboardButton("Счета к заявкам"))
+router = Router()
 
-# -----------------------------
-# Команды и кнопки
-# -----------------------------
-async def start_handler(message: types.Message):
-    await message.answer("Выберите раздел:", reply_markup=kb_main)
+# Пример состояний для счетов
+class ConnectionBillStates(StatesGroup):
+    waiting_for_number = State()
+    waiting_for_date = State()
+    waiting_for_amount = State()
 
-async def view_connection_bills(message: types.Message):
-    bills = connection_bills_service.communication_bills
-    if not bills:
-        await message.answer("Счетов за связь пока нет.")
-        return
-    output = []
-    for b in bills:
-        output.append(f"{b['№']} от {b['Дата']} | {b.get('Контрагент','')} | {b.get('Сумма','')}")
-    await message.answer("\n".join(output))
+async def start_connection_bill(message: Message, state: FSMContext):
+    await message.answer("Введите номер счета:")
+    await state.set_state(ConnectionBillStates.waiting_for_number)
 
-# -----------------------------
-# Регистрация обработчиков
-# -----------------------------
-def register_connection_bills_handlers(dp: Dispatcher):
-    dp.register_message_handler(start_handler, commands=["start"])
-    dp.register_message_handler(view_connection_bills, lambda m: m.text == "Счета за связь")
+async def get_number(message: Message, state: FSMContext):
+    await state.update_data(number=message.text)
+    await message.answer("Введите дату счета (ДД.ММ.ГГГГ):")
+    await state.set_state(ConnectionBillStates.waiting_for_date)
+
+async def get_date(message: Message, state: FSMContext):
+    await state.update_data(date=message.text)
+    await message.answer("Введите сумму:")
+    await state.set_state(ConnectionBillStates.waiting_for_amount)
+
+async def get_amount(message: Message, state: FSMContext):
+    await state.update_data(amount=message.text)
+    data = await state.get_data()
+    await message.answer(
+        f"Счет сохранен:\nНомер: {data['number']}\nДата: {data['date']}\nСумма: {data['amount']}"
+    )
+    await state.clear()
+
+def register_connection_bills_handlers(dp):
+    dp.message.register(start_connection_bill, F.text == "Создать счет")
+    dp.message.register(get_number, ConnectionBillStates.waiting_for_number)
+    dp.message.register(get_date, ConnectionBillStates.waiting_for_date)
+    dp.message.register(get_amount, ConnectionBillStates.waiting_for_amount)
